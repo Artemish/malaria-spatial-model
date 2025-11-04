@@ -53,11 +53,12 @@ RUN R -q -e "options(repos='https://cloud.r-project.org'); install.packages(c( \
 ))"
 
 # 5) App directory and script
-WORKDIR /app
 RUN R -q -e "options(repos='https://cloud.r-project.org'); install.packages(c('CARBayesST'), Ncpus = 4)"
 
 COPY model /app/model
 COPY data /app/data
 
+WORKDIR /app/model
+
 # 6) Default command: run the script
-CMD ["Rscript", "/app/model/model_analysis_batch.R"]
+CMD ["Rscript", "model_analysis_batch.R"]

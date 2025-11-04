@@ -1,0 +1,142 @@
+---
+title: "Untitled"
+author: "Hengcheng Zhu"
+date: "2024-04-08"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(MASS)
+library(tidyr)
+library(CARBayesST)
+# map = read_sf('../Mozambique administrative shapes/MOZ_adm/MOZ_adm2.shp')
+# map$NAME_2 = marlaria_dst_death_final_new$district
+# 
+# map_mat <- nb2mat(poly2nb(map), style = "B")
+# map_mat_w <- nb2mat(poly2nb(map), style = "W")
+```
+
+
+
+
+```{r}
+full_m_district_PRCP = full_m_district_PRCP[,1:4]
+full_m_district_PRCP_wide_mean = dcast(full_m_district_PRCP, area~YEARMONTH, value.var = 'PRCP_timetotal_spatialmean_district')
+full_m_district_PRCP_wide_total = dcast(full_m_district_PRCP, area~YEARMONTH, value.var = 'PRCP_timemean_spatialtotal_district')
+
+full_m_district_PRCP_wide_mean_new = full_m_district_PRCP_wide_mean[match( marlaria_dst_case_final_new$district, full_m_district_PRCP_wide_mean$area),]
+full_m_district_PRCP_wide_total_new = full_m_district_PRCP_wide_total[match( marlaria_dst_case_final_new$district, full_m_district_PRCP_wide_total$area),]
+
+full_m_district_PRCP_wide_mean_new = full_m_district_PRCP_wide_mean_new[,c(1,26:85)]
+full_m_district_PRCP_wide_total_new = full_m_district_PRCP_wide_total_new[,c(1,26:85)]
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+marlaria_dst_case_final_new_tmp = cbind(marlaria_dst_case_final_new,
+                                    spaceid=1:130)
+tmp = cbind(marlaria_dst_population_final_new[,1],
+            data.frame(rep(marlaria_dst_population_final_new[,-1], each=12))[,1:60])
+colnames(tmp) = c('district',1:60)
+# tom = melt(marlaria_dst_case_final_new_tmp,id.vars = 'spaceid')
+# 
+# tom = reshape(marlaria_dst_case_final_new_tmp, 
+#               idvar = "spaceid",  direction = "wide")
+
+marlaria_case_long = melt(marlaria_dst_case_final_new, 
+                          id.vars = 'district',
+                          variable.name = "timeid")
+PRCP_mean_long = melt(full_m_district_PRCP_wide_total_new, 
+                      id.vars = 'area',
+                      variable.name = "timeid")
+population_long = melt(tmp, 
+                      id.vars = 'district',
+                      variable.name = "timeid")
+colnames(marlaria_case_long) = c('distrcit', 'timeid', 'marlaria')
+colnames(PRCP_mean_long) = c('distrcit', 'timeid', 'PRCP')
+colnames(population_long) = c('distrcit', 'timeid', 'population')
+
+# final_data = cbind(spaceid = rep(1:130, 60),
+#                    timeid = marlaria_case_long$timeid,
+#                    marlaria = marlaria_case_long$marlaria,
+#                    PRCP = PRCP_mean_long$PRCP,
+#                    population = round(population_long$population))
+
+
+# center PRCP version
+final_data = cbind(spaceid = rep(1:130, 60),
+                   timeid = marlaria_case_long$timeid,
+                   marlaria = marlaria_case_long$marlaria,
+                   PRCP = c(scale(PRCP_mean_long$PRCP, scale=FALSE)),
+                   population = round(population_long$population))
+
+final_data = data.frame(final_data)
+lagged1_PRCP = final_data[final_data$timeid<60,]$PRCP
+lagged2_PRCP = final_data[final_data$timeid<59,]$PRCP
+
+```
+
+
+
+
+
+```{r}
+final_data$lag1_PRCP = final_data$PRCP
+final_data$lag2_PRCP = final_data$PRCP
+final_data[final_data$timeid==1,6] = NA
+final_data[final_data$timeid<=2,7] = NA
+final_data[final_data$timeid>1,6] = lagged1_PRCP
+final_data[final_data$timeid>2,7] = lagged2_PRCP
+final_data_lagged2 = final_data[final_data$timeid>2,]
+final_data_lagged2$log_malaria = log(final_data_lagged2$marlaria+0.001)
+final_data_lagged2$log_rate = log(final_data_lagged2$marlaria/final_data_lagged2$population+0.001)
+
+Ncar <- 1600000
+burn.in.car <- 600000
+thinning <- 100
+
+#f = marlaria ~ offset(log(population)) + PRCP + lag1_PRCP + lag2_PRCP
+#f = marlaria ~ lag2_PRCP
+#f = log_malaria ~ lag2_PRCP
+# f = log_rate ~ lag2_PRCP
+f = marlaria ~ offset(log(population)) + lag2_PRCP
+# M20_lagged2 <- Bcartime(formula=f, data=final_data_lagged2, 
+#                         scol="spaceid", tcol= "timeid",  
+#                W=map_mat, model="ar", AR=2, family="poisson", package="CARBayesST",
+#                N=Ncar, burn.in=burn.in.car)
+# fitts2 = M20_lagged2$fitteds
+
+
+
+# CarBayesSt_lagged2 = ST.CARar(formula=f, data=final_data_lagged2, 
+#                               family='poisson', W=map_mat, burnin=burn.in.car,
+#                               n.sample=Ncar, thin=10, n.chains=2, n.cores=2, AR=2)
+
+
+CarBayesSt_lagged2 = ST.CARar(formula=f, data=final_data_lagged2, 
+                              family='poisson', W=map_mat, burnin=burn.in.car,
+                              n.sample=Ncar, thin=thinning, n.chains=2, n.cores=2, AR=2,
+                              rho.S=0.52, rho.T=c(0.68, 0.26))
+
+fit = fit$samples
+fit = list(beta = fit$beta,tau2 = fit$tau2,nu2=fit$nu2, rho=fit$rho)
+save(fit, file='gaussian_log_malaria.RData')
+
+
+
+
+```
+
+

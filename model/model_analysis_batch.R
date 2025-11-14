@@ -53,24 +53,12 @@ colnames(tmp) = c('district',1:60)
 # tom = reshape(marlaria_dst_case_final_new_tmp, 
 #               idvar = "spaceid",  direction = "wide")
 
-marlaria_case_long = melt(marlaria_dst_case_final_new, 
-                          id.vars = 'district',
-                          variable.name = "timeid")
-PRCP_mean_long = melt(full_m_district_PRCP_wide_total_new, 
-                      id.vars = 'area',
-                      variable.name = "timeid")
-population_long = melt(tmp, 
-                       id.vars = 'district',
-                       variable.name = "timeid")
-TEMP_max_long = melt(temperature_district_final_wide_max_new, 
-                      id.vars = 'area',
-                      variable.name = "timeid")
-TEMP_min_long = melt(temperature_district_final_wide_min_new, 
-                     id.vars = 'area',
-                     variable.name = "timeid")
-TEMP_mean_long = melt(temperature_district_final_wide_mean_new, 
-                     id.vars = 'area',
-                     variable.name = "timeid")
+marlaria_case_long = melt(marlaria_dst_case_final_new, id.vars = 'district', variable.name = "timeid")
+PRCP_mean_long = melt(full_m_district_PRCP_wide_total_new, id.vars = 'area', variable.name = "timeid")
+population_long = melt(tmp, id.vars = 'district', variable.name = "timeid")
+TEMP_max_long = melt(temperature_district_final_wide_max_new, id.vars = 'area', variable.name = "timeid")
+TEMP_min_long = melt(temperature_district_final_wide_min_new, id.vars = 'area', variable.name = "timeid")
+TEMP_mean_long = melt(temperature_district_final_wide_mean_new, id.vars = 'area', variable.name = "timeid")
 colnames(marlaria_case_long) = c('distrcit', 'timeid', 'marlaria')
 colnames(PRCP_mean_long) = c('distrcit', 'timeid', 'PRCP')
 colnames(population_long) = c('distrcit', 'timeid', 'population')
@@ -249,8 +237,10 @@ final_data_lagged4 = final_data[final_data$timeid>4,]
 final_data_lagged4$log_malaria = log(final_data_lagged4$marlaria+0.001)
 final_data_lagged4$log_rate = log(final_data_lagged4$marlaria/final_data_lagged4$population+0.001)
 
-Ncar <- 500000
-burn.in.car <- 100000
+# Ncar <- 500000
+Ncar <- 50000
+# burn.in.car <- 100000
+burn.in.car <- 10000
 thinning <- 40
 
 lag1_PRCP_q1 = summary(final_data_lagged4$lag1_PRCP)[2]
@@ -316,6 +306,8 @@ CarBayesSt_lagged4 = ST.CARar(formula=f, data=final_data_lagged4,
 
 fit = CarBayesSt_lagged4
 print(fit)
+
+save(f, final_data_lagged4, file='prediction_data.Rdata')
 
 summary=fit$summary.results
 save(summary, file='fit_beta_lagged3_max_summary_south_spline_full.RData')

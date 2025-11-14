@@ -45,8 +45,6 @@ train_malaria_model <- function(region = "north",
   load("../data/id.rda")
   load("../data/temperature_district_final.rda")
 
-  marlaria_dst_case_final_new = read.csv('training_data_formatted.csv', header = TRUE)
-  
   cat("Data loaded successfully\n")
   
   # Define month columns
@@ -62,6 +60,7 @@ train_malaria_model <- function(region = "north",
   
   full_m_district_PRCP_wide_mean_new = full_m_district_PRCP_wide_mean_new[,month_cols]
   full_m_district_PRCP_wide_total_new = full_m_district_PRCP_wide_total_new[,month_cols]
+  browser()
   
   # Process temperature data
   temperature_district_final_wide_max = dcast(temperature_district_final, area~YEARMONTH, value.var = 'lst_day_c_max')

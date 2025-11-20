@@ -1,5 +1,11 @@
-
 name: minimalist_r
+
+target: disease_cases
+required_covariates: 
+  - pop
+  - preci
+  - temp_max
+supported_period_type: month
 
 docker_env:
   image: ivargr/r_inla:latest
